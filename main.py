@@ -9,10 +9,10 @@ Control the experiment schedule
 class ExcuteExperiments:
 
     def __init__(self, s):
-        pass
+        self.solver = s
 
     def excute(self):
-        pass
+        self.solver.run()
 
 
 
@@ -36,6 +36,10 @@ if __name__ == '__main__':
                         help='embed_dim_r')
     parser.add_argument('--embed_dim_r_', type=int, default=cf.get("parameters", "embed_dim_r_"), required=False,
                         help='embed_dim_r_')
+    parser.add_argument('--feature_k', type=int, default=cf.get("parameters", "feature_k"), required=False,
+                        help='feature_k')
+    parser.add_argument('--alpha', type=float, default=cf.get("parameters", "alpha"), required=False,
+                        help='alpha')
     parser.add_argument('--reg_u', type=float, default=cf.get("parameters", "reg_u"), required=False,
                         help='reg_u')
     parser.add_argument('--reg_h', type=float, default=cf.get("parameters", "reg_h"), required=False,
@@ -44,6 +48,8 @@ if __name__ == '__main__':
                         help='learning_rate')
     parser.add_argument('--optimizer', type=str, default=cf.get("parameters", "optimizer"), required=False,
                         help='optimizer')
+    parser.add_argument('--evaluate', type=str, default=cf.get("parameters", "evaluate"), required=False,
+                        help='evaluate')
     parser.add_argument('--model_dir', type=str, default=cf.get("parameters", "model_dir"), required=False,
                         help='model_dir')
     parser.add_argument('--min_eval_frequency', type=int, default=cf.get("parameters", "min_eval_frequency"),
