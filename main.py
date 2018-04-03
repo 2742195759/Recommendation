@@ -7,7 +7,6 @@ Control the experiment schedule
 '''
 
 class ExcuteExperiments:
-
     def __init__(self, s):
         self.solver = s
 
@@ -38,6 +37,8 @@ if __name__ == '__main__':
                         help='embed_dim_r_')
     parser.add_argument('--feature_k', type=int, default=cf.get("parameters", "feature_k"), required=False,
                         help='feature_k')
+    parser.add_argument('--Top_K', type=int, default=cf.get("parameters", "Top_K"), required=False,
+                        help='Top_K')
     parser.add_argument('--alpha', type=float, default=cf.get("parameters", "alpha"), required=False,
                         help='alpha')
     parser.add_argument('--reg_u', type=float, default=cf.get("parameters", "reg_u"), required=False,

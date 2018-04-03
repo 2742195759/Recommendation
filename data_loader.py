@@ -1,5 +1,6 @@
 import pickle
 import random
+import pandas as pd
 
 class DataLoader():
 
@@ -42,18 +43,17 @@ class DataLoader():
             item = int(k.split('@')[1])
             if item not in self.item_candidates:
                 self.item_candidates.append(item)
+        self.item_candidates = random.sample(self.item_candidates, 1000)
 
-        self.item_candidates = random.sample(self.item_candidates, 100)
-        self.grund_truth = dict()
-
+        self.ground_truth = dict()
         for k, v in self.test_data.items():
             user = int(k.split('@')[0])
             item = int(k.split('@')[1])
             if item in self.item_candidates:
-                if user not in self.grund_truth.keys():
-                    self.grund_truth[user] = [item]
+                if user not in self.ground_truth.keys():
+                    self.ground_truth[user] = [item]
                 else:
-                    self.grund_truth[user].append(item)
+                    self.ground_truth[user].append(item)
 
     def make_data(self):
         self.get_train_raw_data()
@@ -98,7 +98,23 @@ class DataLoader():
                 self.test_a_uis.append(float(a_ui))
             self.test_sample_num = len(self.test_users)
         else:
-            pass
+            self.test_users = []
+            self.test_items = []
+            output_search_result_index = []
+            for user in self.ground_truth.keys():
+                for item in self.item_candidates:
+                    self.test_users.append(int(user))
+                    self.test_items.append(int(item))
+                    if item in self.ground_truth[int(user)]:
+                        tmp = [user, item, 1]
+                    else:
+                        tmp = [user, item, 0]
+                    output_search_result_index.append(tmp)
+
+            self.test_sample_num = len(self.test_users)
+            print(self.test_sample_num)
+            t = pd.DataFrame(output_search_result_index)
+            t.to_csv(self.base_path + self.category + 'output_top_n_result_index', index=False, header=None)
 
     def get_train_batch_data(self, batch_size):
         l = len(self.train_users)
@@ -144,6 +160,17 @@ class DataLoader():
 
             return [batch_test_users, batch_test_items, batch_test_a_uis]
         else:
-            pass
+            l = len(self.test_users)
+            if self.test_batch_id + batch_size > l:
+                batch_test_users = self.test_users[self.test_batch_id:] + self.test_users[:self.test_batch_id + batch_size - l]
+                batch_test_items = self.test_items[self.test_batch_id:] + self.test_items[:self.test_batch_id + batch_size - l]
+                self.test_batch_id = self.test_batch_id + batch_size - l
+
+            else:
+                batch_test_users = self.test_users[self.test_batch_id:self.test_batch_id + batch_size]
+                batch_test_items = self.test_items[self.test_batch_id:self.test_batch_id + batch_size]
+                self.test_batch_id = self.test_batch_id + batch_size
+
+            return [batch_test_users, batch_test_items]
 
 

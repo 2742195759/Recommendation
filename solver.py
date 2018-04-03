@@ -3,6 +3,7 @@ from model.lrppm import *
 import tensorflow as tf
 from data_loader import DataLoader
 import numpy as np
+import pandas as pd
 
 '''
 Solve a model: 
@@ -23,14 +24,134 @@ class Solver:
             self.m.build_train_op()
             self.m.build_prediction()
 
+    def MAP(self, ground_truth, pred):
+        result = []
+        for k,v in ground_truth.items():
+            fit = [i[0] for i in pred[k]][:self.args.Top_K]
+            tmp = 0
+            hit = 0
+            for j in range(len(fit)):
+                if fit[j] in v:
+                    hit += 1
+                    tmp += hit / (j+1)
+            result.append(tmp)
+        return np.array(result).mean()
+
+    def MRR(self, ground_truth, pred):
+        result = []
+        for k, v in ground_truth.items():
+            fit = [i[0] for i in pred[k]][:self.args.Top_K]
+            tmp = 0
+            for j in range(len(fit)):
+                if fit[j] in v:
+                    tmp = 1 / (j + 1)
+                    break
+            result.append(tmp)
+        return np.array(result).mean()
+
+    def NDCG(self, ground_truth, pred):
+        result = []
+        for k, v in ground_truth.items():
+            fit = [i[0] for i in pred[k]][:self.args.Top_K]
+            temp = 0
+            Z_u = 0
+            for j in range(len(fit)):
+                Z_u = Z_u + 1 / np.log2(j + 2)
+                if fit[j] in v:
+                    temp = temp + 1 / np.log2(j + 2)
+            if Z_u == 0:
+                temp = 0
+            else:
+                temp = temp / Z_u
+            result.append(temp)
+        return np.array(result).mean()
+
+    def top_k(self, ground_truth, pred):
+        correct = []
+        co_length = []
+        re_length = []
+        pu_length = []
+        p = []
+        r = []
+        f = []
+        hit = []
+        for k, v in ground_truth.items():
+            temp = []
+            fit = [i[0] for i in pred[k]][:self.args.Top_K]
+            for j in fit:
+                if j in v:
+                    temp.append(j)
+            if len(temp):
+                hit.append(1)
+            else:
+                hit.append(0)
+            co_length.append(len(temp))
+            re_length.append(len(fit))
+            pu_length.append(len(v))
+            correct.append(temp)
+
+        for i in range(len(ground_truth.keys())):
+            if re_length[i] == 0:
+                p_t = 0.0
+            else:
+                p_t = co_length[i] / float(re_length[i])
+            if pu_length[i] == 0:
+                r_t = 0.0
+            else:
+                r_t = co_length[i] / float(pu_length[i])
+            p.append(p_t)
+            r.append(r_t)
+            if p_t != 0 or r_t != 0:
+                f.append(2.0 * p_t * r_t / (p_t + r_t))
+            else:
+                f.append(0.0)
+        return np.array(p).mean(), np.array(r).mean(), np.array(f).mean(), np.array(hit).mean()
+
     def evaluate(self):
-        pass
+        # map, mrr, p, r, f1, hit, ndcg = 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0
+        index_path = self.args.base_path + self.args.category+'output_top_n_result_index'
+        index = pd.read_csv(index_path, header=None)
+        predictions_path = self.args.base_path + self.args.category+'output_top_n_result'
+        predictions = pd.read_csv(predictions_path, header=None)
+
+        ground_truth = {}
+        pred = {}
+
+        l = len(predictions.values)
+        for i in range(l):
+            ind = index.values[i]
+            pre = predictions.values[i][0]
+            user = ind[0]
+            item = ind[1]
+            pur_or_not = ind[2]
+
+            if pur_or_not == 1:
+                if user not in ground_truth.keys():
+                    ground_truth[user] = [item]
+                else:
+                    ground_truth[user].append(item)
+
+            if user not in pred.keys():
+                pred[user] = {item: pre}
+            else:
+                pred[user][item] = pre
+
+        for k,v in pred.items():
+            pred[k] = sorted(v.items(), key=lambda item: item[1])[::-1]
+
+        p, r, f1, hit = self.top_k(ground_truth, pred)
+        map = self.MAP(ground_truth, pred)
+        mrr = self.MRR(ground_truth, pred)
+        ndcg = self.NDCG(ground_truth, pred)
+        return map, mrr, p, r, f1, hit, ndcg
 
     def run(self):
         with tf.Session() as self.sess:
             init = tf.initialize_all_variables()
             self.sess.run(init)
-            best_rmse = 100
+            best_rmse = 100.0
+            best_top_n = []
+            best_value = 0.0
             for epoch in range(self.args.epoch_number):
                 for step in range(int(self.data_loader.train_sample_num/self.args.batch_size)):
                     print('epoch: %s/%s, step %s/%s' % (epoch, self.args.epoch_number, step, int(self.data_loader.train_sample_num/self.args.batch_size)))
@@ -60,7 +181,28 @@ class Solver:
                                 best_rmse = rmse
                             print('current best rmse = %s' % (best_rmse))
                         else:
-                            pass
+                            for _ in range(self.data_loader.test_sample_num/2):
+                                test_input_fn = self.data_loader.get_test_batch_data(2)
+                                score = self.sess.run(self.m.final_score,
+                                                    feed_dict={self.m.user_id: test_input_fn[0],
+                                                               self.m.item_id: test_input_fn[1]})
+                                result.extend(score)
+
+                            t = pd.DataFrame(result)
+                            t.to_csv(self.args.base_path + self.args.category + 'output_top_n_result', index=False,
+                                     header=None)
+
+                            map, mrr, p, r, f1, hit, ndcg = self.evaluate()
+                            if map > best_value:
+                                best_top_n = [map, mrr, p, r, f1, hit, ndcg]
+                                best_value = map
+                            print('map = %s, mrr = %s, p = %s, r = %s, f1 = %s, hit = %s, ndcg = %s' % (map, mrr, p, r, f1, hit, ndcg))
+                            print('current best:%s' % (str(best_top_n)))
+
+            if self.args.evaluate == 'rmse':
+                print('overall best rmse = %s' % (best_rmse))
+            else:
+                print('overall best top_n = %s' % (str(best_top_n)))
 
 
 

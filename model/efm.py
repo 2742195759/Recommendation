@@ -43,23 +43,15 @@ class EFM:
             self.train_op = tf.train.AdagradOptimizer(self.args['learning_rate']).minimize(self.loss)
 
     def build_prediction(self):
-        if self.args['evaluate'] == 'rmse':
-            self.predict_score = tf.reduce_sum(tf.multiply(self.complete_embedded_user, self.complete_embedded_item), 1)
-            self.user_feature_scores = tf.matmul(self.embedded_user, tf.transpose(self.feature_embedding_matrix))
-            self.top_user_feature_scores_value, self.index = tf.nn.top_k(self.user_feature_scores, self.args['feature_k'])
-            self.top_item_feature_scores_value = tf.reduce_sum(
-                tf.matmul(tf.nn.embedding_lookup(self.feature_embedding_matrix, self.index),
-                          tf.expand_dims(self.embedded_item, 2)), 2)
-            self.feature_match_score = tf.reduce_sum(tf.multiply(self.top_user_feature_scores_value, self.top_item_feature_scores_value), 1) / (self.args['feature_k'] * 5)
-            self.final_score = self.args['alpha'] * self.feature_match_score + (1 - self.args['alpha']) * self.predict_score
-            self.error_square = tf.pow(self.final_score-self.a_ui, 2)
-            print(self.final_score)
-            print(self.a_ui)
-            print(self.error_square)
-        else:
-            pass
-
-
+        self.predict_score = tf.reduce_sum(tf.multiply(self.complete_embedded_user, self.complete_embedded_item), 1)
+        self.user_feature_scores = tf.matmul(self.embedded_user, tf.transpose(self.feature_embedding_matrix))
+        self.top_user_feature_scores_value, self.index = tf.nn.top_k(self.user_feature_scores, self.args['feature_k'])
+        self.top_item_feature_scores_value = tf.reduce_sum(tf.matmul(tf.nn.embedding_lookup(self.feature_embedding_matrix, self.index),
+                      tf.expand_dims(self.embedded_item, 2)), 2)
+        self.feature_match_score = tf.reduce_sum(tf.multiply(self.top_user_feature_scores_value, self.top_item_feature_scores_value), 1) / (
+                                   self.args['feature_k'] * 5)
+        self.final_score = self.args['alpha'] * self.feature_match_score + (1 - self.args['alpha']) * self.predict_score
+        self.error_square = tf.pow(self.final_score-self.a_ui, 2)
 
     def build_loss(self):
         self.u_reg = tf.reduce_sum(tf.abs(self.user_embedding_matrix) - self.user_embedding_matrix)
