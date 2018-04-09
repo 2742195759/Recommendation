@@ -11,8 +11,11 @@ class EFM:
 
         self.user_id = tf.placeholder(tf.int32, [None])
         self.item_id = tf.placeholder(tf.int32, [None])
+        if self.args['evaluate'] == 'rmse':
+            self.a_ui = tf.placeholder(tf.float32, [None])
+        else:
+            self.neg_item_id = tf.placeholder(tf.int32, [None])
         self.feature_id = tf.placeholder(tf.int32, [None])
-        self.a_ui = tf.placeholder(tf.float32, [None])
         self.x_uf = tf.placeholder(tf.float32, [None])
         self.y_if = tf.placeholder(tf.float32, [None])
 
@@ -29,12 +32,16 @@ class EFM:
                                               initializer=self.initializer)
 
         self.embedded_user = tf.nn.embedding_lookup(self.user_embedding_matrix, self.user_id)
-        self.embedded_item = tf.nn.embedding_lookup(self.item_embedding_matrix, self.item_id)
         self.embedded_user_h = tf.nn.embedding_lookup(self.user_h_embedding_matrix, self.user_id)
-        self.embedded_item_h = tf.nn.embedding_lookup(self.item_h_embedding_matrix, self.item_id)
-        self.embedded_feature = tf.nn.embedding_lookup(self.feature_embedding_matrix, self.feature_id)
         self.complete_embedded_user = tf.concat([self.embedded_user, self.embedded_user_h], 1)
+        self.embedded_item = tf.nn.embedding_lookup(self.item_embedding_matrix, self.item_id)
+        self.embedded_item_h = tf.nn.embedding_lookup(self.item_h_embedding_matrix, self.item_id)
         self.complete_embedded_item = tf.concat([self.embedded_item, self.embedded_item_h], 1)
+        if self.args['evaluate'] != 'rmse':
+            self.neg_embedded_item = tf.nn.embedding_lookup(self.item_embedding_matrix, self.neg_item_id)
+            self.neg_embedded_item_h = tf.nn.embedding_lookup(self.item_h_embedding_matrix, self.neg_item_id)
+            self.neg_complete_embedded_item = tf.concat([self.neg_embedded_item, self.neg_embedded_item_h], 1)
+        self.embedded_feature = tf.nn.embedding_lookup(self.feature_embedding_matrix, self.feature_id)
 
     def build_train_op(self):
         if self.args['learning_rate'] == 'sgd':
@@ -51,7 +58,8 @@ class EFM:
         self.feature_match_score = tf.reduce_sum(tf.multiply(self.top_user_feature_scores_value, self.top_item_feature_scores_value), 1) / (
                                    self.args['feature_k'] * 5)
         self.final_score = self.args['alpha'] * self.feature_match_score + (1 - self.args['alpha']) * self.predict_score
-        self.error_square = tf.pow(self.final_score-self.a_ui, 2)
+        if self.args['evaluate'] == 'rmse':
+            self.error_square = tf.pow(self.final_score-self.a_ui, 2)
 
     def build_loss(self):
         self.u_reg = tf.reduce_sum(tf.abs(self.user_embedding_matrix) - self.user_embedding_matrix)
@@ -66,8 +74,15 @@ class EFM:
                       self.args['reg_h'] * (tf.nn.l2_loss(self.user_h_embedding_matrix) +
                                             tf.nn.l2_loss(self.item_h_embedding_matrix) +
                                             tf.nn.l2_loss(self.feature_embedding_matrix))
-        self.error = tf.reduce_sum(tf.pow(self.a_ui - tf.reduce_sum(tf.multiply(self.complete_embedded_user, self.complete_embedded_item),1), 2)+
+        if self.args['evaluate'] == 'rmse':
+            self.error = tf.reduce_sum(tf.pow(self.a_ui - tf.reduce_sum(tf.multiply(self.complete_embedded_user, self.complete_embedded_item),1), 2)+
                                    tf.pow(self.x_uf - tf.reduce_sum(tf.multiply(self.embedded_user, self.embedded_feature), 1), 2)+
                                    tf.pow(self.y_if - tf.reduce_sum(tf.multiply(self.embedded_item, self.embedded_feature), 1), 2))
+        else:
+            bpr = -tf.log_sigmoid(tf.reduce_sum(tf.multiply(self.complete_embedded_user, self.complete_embedded_item), 1) -
+                             tf.reduce_sum(tf.multiply(self.complete_embedded_user, self.neg_complete_embedded_item), 1))
 
+            self.error = tf.reduce_sum(bpr +
+                     tf.pow(self.x_uf - tf.reduce_sum(tf.multiply(self.embedded_user, self.embedded_feature), 1), 2) +
+                     tf.pow(self.y_if - tf.reduce_sum(tf.multiply(self.embedded_item, self.embedded_feature), 1), 2))
         self.loss = self.error + self.non_negative_reg + self.l2_reg

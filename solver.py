@@ -17,9 +17,22 @@ class Solver:
         self.args = args
         self.data_loader = DataLoader(args)
         self.data_loader.make_data()
+        print('all user number:', self.data_loader.user_number)
+        print('all item number:', self.data_loader.item_number)
+        print('all feature number:', self.data_loader.feature_number)
+        print('train user number:', len(self.data_loader.user_purchased_items.keys()))
+        print('train instance number:', self.data_loader.train_sample_num)
+        print('test user number:', len(self.data_loader.ground_truth.keys()))
+        print('test item number:', len(self.data_loader.item_candidates))
+        print('test instance number:', self.data_loader.test_sample_num)
 
         if args.model == 'efm':
             self.m = EFM(self.data_loader.params)
+            self.m.build_loss()
+            self.m.build_train_op()
+            self.m.build_prediction()
+        else:
+            self.m = LRPPM(self.data_loader.params)
             self.m.build_loss()
             self.m.build_train_op()
             self.m.build_prediction()
@@ -136,7 +149,7 @@ class Solver:
             else:
                 pred[user][item] = pre
 
-        for k,v in pred.items():
+        for k, v in pred.items():
             pred[k] = sorted(v.items(), key=lambda item: item[1])[::-1]
 
         p, r, f1, hit = self.top_k(ground_truth, pred)
@@ -156,13 +169,20 @@ class Solver:
                 for step in range(int(self.data_loader.train_sample_num/self.args.batch_size)):
                     print('epoch: %s/%s, step %s/%s' % (epoch, self.args.epoch_number, step, int(self.data_loader.train_sample_num/self.args.batch_size)))
                     train_input_fn = self.data_loader.get_train_batch_data(self.args.batch_size)
-
-                    self.sess.run(self.m.train_op, feed_dict={self.m.user_id: train_input_fn[0],
+                    if self.args.evaluate == 'rmse':
+                        self.sess.run(self.m.train_op, feed_dict={self.m.user_id: train_input_fn[0],
                                                               self.m.item_id: train_input_fn[1],
-                                                              self.m.feature_id: train_input_fn[2],
-                                                              self.m.a_ui: train_input_fn[3],
-                                                              self.m.x_uf: train_input_fn[4],
-                                                              self.m.y_if: train_input_fn[5]})
+                                                              self.m.pos_feature_id: train_input_fn[2],
+                                                              self.m.neg_feature_id: train_input_fn[3],
+                                                              self.m.a_ui: train_input_fn[4],
+                                                              })
+                    else:
+                        self.sess.run(self.m.train_op, feed_dict={self.m.user_id: train_input_fn[0],
+                                                                  self.m.item_id: train_input_fn[1],
+                                                                  self.m.neg_item_id: train_input_fn[2],
+                                                                  self.m.pos_feature_id: train_input_fn[3],
+                                                                  self.m.neg_feature_id: train_input_fn[4],
+                                                                  })
 
                     if step % 50 == 0:
                         result = []
@@ -193,9 +213,9 @@ class Solver:
                                      header=None)
 
                             map, mrr, p, r, f1, hit, ndcg = self.evaluate()
-                            if map > best_value:
+                            if f1 > best_value:
                                 best_top_n = [map, mrr, p, r, f1, hit, ndcg]
-                                best_value = map
+                                best_value = f1
                             print('map = %s, mrr = %s, p = %s, r = %s, f1 = %s, hit = %s, ndcg = %s' % (map, mrr, p, r, f1, hit, ndcg))
                             print('current best:%s' % (str(best_top_n)))
 

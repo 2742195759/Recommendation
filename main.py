@@ -15,8 +15,6 @@ class ExcuteExperiments:
 
 
 
-
-
 if __name__ == '__main__':
     cf = configparser.ConfigParser()
     cf.read("./config/default_setting.conf")
@@ -57,6 +55,10 @@ if __name__ == '__main__':
                         required=False, help='min_eval_frequency')
     parser.add_argument('--epoch_number', type=int, default=cf.get("parameters", "epoch_number"), required=False,
                         help='epoch_number')
+    parser.add_argument('--neg_number', type=int, default=cf.get("parameters", "neg_number"), required=False,
+                        help='neg_number')
+    parser.add_argument('--neg_feature_number', type=int, default=cf.get("parameters", "neg_feature_number"), required=False,
+                        help='neg_feature_number')
     args = parser.parse_args()
 
     s = Solver(args)
