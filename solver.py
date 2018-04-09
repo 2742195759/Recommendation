@@ -167,28 +167,48 @@ class Solver:
             best_value = 0.0
             for epoch in range(self.args.epoch_number):
                 for step in range(int(self.data_loader.train_sample_num/self.args.batch_size)):
-                    print('epoch: %s/%s, step %s/%s' % (epoch, self.args.epoch_number, step, int(self.data_loader.train_sample_num/self.args.batch_size)))
                     train_input_fn = self.data_loader.get_train_batch_data(self.args.batch_size)
-                    if self.args.evaluate == 'rmse':
-                        self.sess.run(self.m.train_op, feed_dict={self.m.user_id: train_input_fn[0],
-                                                              self.m.item_id: train_input_fn[1],
-                                                              self.m.pos_feature_id: train_input_fn[2],
-                                                              self.m.neg_feature_id: train_input_fn[3],
-                                                              self.m.a_ui: train_input_fn[4],
-                                                              })
+                    if self.args.model == 'efm':
+                        if self.args.evaluate == 'rmse':
+                            self.sess.run(self.m.train_op, feed_dict={self.m.user_id: train_input_fn[0],
+                                                                      self.m.item_id: train_input_fn[1],
+                                                                      self.m.feature_id: train_input_fn[2],
+                                                                      self.m.a_ui: train_input_fn[3],
+                                                                      self.m.x_uf: train_input_fn[4],
+                                                                      self.m.y_if: train_input_fn[5],
+                                                                      })
+                        else:
+                            self.sess.run(self.m.train_op, feed_dict={self.m.user_id: train_input_fn[0],
+                                                                      self.m.item_id: train_input_fn[1],
+                                                                      self.m.neg_item_id: train_input_fn[2],
+                                                                      self.m.feature_id: train_input_fn[3],
+                                                                      self.m.x_uf: train_input_fn[4],
+                                                                      self.m.y_if: train_input_fn[5],
+                                                                      })
                     else:
-                        self.sess.run(self.m.train_op, feed_dict={self.m.user_id: train_input_fn[0],
-                                                                  self.m.item_id: train_input_fn[1],
-                                                                  self.m.neg_item_id: train_input_fn[2],
-                                                                  self.m.pos_feature_id: train_input_fn[3],
-                                                                  self.m.neg_feature_id: train_input_fn[4],
-                                                                  })
+                        if self.args.evaluate == 'rmse':
+                            self.sess.run(self.m.train_op, feed_dict={self.m.user_id: train_input_fn[0],
+                                                                      self.m.item_id: train_input_fn[1],
+                                                                      self.m.pos_feature_id: train_input_fn[2],
+                                                                      self.m.neg_feature_id: train_input_fn[3],
+                                                                      self.m.a_ui: train_input_fn[4],
+                                                                      })
+                        else:
+                            self.sess.run(self.m.train_op, feed_dict={self.m.user_id: train_input_fn[0],
+                                                                      self.m.item_id: train_input_fn[1],
+                                                                      self.m.neg_item_id: train_input_fn[2],
+                                                                      self.m.pos_feature_id: train_input_fn[3],
+                                                                      self.m.neg_feature_id: train_input_fn[4],
+                                                                      })
+
 
                     if step % 50 == 0:
                         result = []
                         result_1 = []
                         result_2 = []
                         if self.args.evaluate == 'rmse':
+                            print('epoch: %s/%s, step %s/%s' % (epoch, self.args.epoch_number, step, int(
+                                self.data_loader.train_sample_num / self.args.batch_size)))
                             for _ in range(self.data_loader.test_sample_num/2):
                                 test_input_fn = self.data_loader.get_test_batch_data(2)
                                 error_square = self.sess.run(self.m.error_square,
@@ -203,6 +223,8 @@ class Solver:
                                 best_rmse = rmse
                             print('current best rmse = %s' % (best_rmse))
                         else:
+                            print('epoch: %s/%s, step %s/%s' % (epoch, self.args.epoch_number, step, int(
+                                self.data_loader.train_sample_num / self.args.batch_size)))
                             for _ in range(self.data_loader.test_sample_num/2):
                                 test_input_fn = self.data_loader.get_test_batch_data(2)
                                 score, m_score, p_score = self.sess.run([self.m.final_score, self.m.feature_match_score, self.m.predict_score],
