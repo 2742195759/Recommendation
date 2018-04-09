@@ -85,9 +85,9 @@ class LRPPM:
         bpr_feature = self.PITF_predict(self.embedded_user, self.embedded_item, self.pos_embedded_feature) - \
                       self.PITF_predict(self.embedded_user, self.embedded_item, self.neg_embedded_feature)
         if self.args['evaluate'] == 'rmse':
-            self.error = tf.reduce_sum(tf.pow(self.a_ui - tf.reduce_sum(tf.multiply(self.embedded_user, self.embedded_item),1), 2) - bpr_feature)
+            self.error = tf.reduce_sum(tf.pow(self.a_ui - tf.reduce_sum(tf.multiply(self.embedded_user, self.embedded_item),1), 2) - self.args['lambda']*bpr_feature)
         else:
             bpr = - tf.log_sigmoid(tf.reduce_sum(tf.multiply(self.embedded_user, self.embedded_item), 1) -
                              tf.reduce_sum(tf.multiply(self.embedded_user, self.neg_embedded_item), 1))
-            self.error = tf.reduce_sum(bpr - bpr_feature)
+            self.error = tf.reduce_sum(bpr - self.args['lambda']*bpr_feature)
         self.loss = self.error + self.l2_reg

@@ -186,6 +186,8 @@ class Solver:
 
                     if step % 50 == 0:
                         result = []
+                        result_1 = []
+                        result_2 = []
                         if self.args.evaluate == 'rmse':
                             for _ in range(self.data_loader.test_sample_num/2):
                                 test_input_fn = self.data_loader.get_test_batch_data(2)
@@ -203,13 +205,21 @@ class Solver:
                         else:
                             for _ in range(self.data_loader.test_sample_num/2):
                                 test_input_fn = self.data_loader.get_test_batch_data(2)
-                                score = self.sess.run(self.m.final_score,
+                                score, m_score, p_score = self.sess.run([self.m.final_score, self.m.feature_match_score, self.m.predict_score],
                                                     feed_dict={self.m.user_id: test_input_fn[0],
                                                                self.m.item_id: test_input_fn[1]})
                                 result.extend(score)
+                                result_1.extend(m_score)
+                                result_2.extend(p_score)
 
                             t = pd.DataFrame(result)
                             t.to_csv(self.args.base_path + self.args.category + 'output_top_n_result', index=False,
+                                     header=None)
+                            t = pd.DataFrame(result_1)
+                            t.to_csv(self.args.base_path + self.args.category + 'output_top_n_result_1', index=False,
+                                     header=None)
+                            t = pd.DataFrame(result_2)
+                            t.to_csv(self.args.base_path + self.args.category + 'output_top_n_result_2', index=False,
                                      header=None)
 
                             map, mrr, p, r, f1, hit, ndcg = self.evaluate()

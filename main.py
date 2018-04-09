@@ -39,6 +39,8 @@ if __name__ == '__main__':
                         help='Top_K')
     parser.add_argument('--alpha', type=float, default=cf.get("parameters", "alpha"), required=False,
                         help='alpha')
+    parser.add_argument('--lambda', type=float, default=cf.get("parameters", "lambda"), required=False,
+                        help='lambda')
     parser.add_argument('--reg_u', type=float, default=cf.get("parameters", "reg_u"), required=False,
                         help='reg_u')
     parser.add_argument('--reg_h', type=float, default=cf.get("parameters", "reg_h"), required=False,
