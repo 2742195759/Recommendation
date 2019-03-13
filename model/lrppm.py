@@ -75,7 +75,10 @@ class LRPPM:
             self.error_square = tf.pow(self.final_score-self.a_ui, 2)
 
 
-
+#XXX:  choose the random time in proper timestamp
+#
+#
+#
     def build_loss(self):
         self.l2_reg = self.args['reg_u'] * (tf.nn.l2_loss(self.user_embedding_matrix) +
                                             tf.nn.l2_loss(self.item_embedding_matrix)) + \
@@ -85,6 +88,7 @@ class LRPPM:
         bpr_feature = self.PITF_predict(self.embedded_user, self.embedded_item, self.pos_embedded_feature) - \
                       self.PITF_predict(self.embedded_user, self.embedded_item, self.neg_embedded_feature)
         if self.args['evaluate'] == 'rmse':
+            #XXX:  where is the tf.log_sigmoid()
             self.error = tf.reduce_sum(tf.pow(self.a_ui - tf.reduce_sum(tf.multiply(self.embedded_user, self.embedded_item),1), 2) - self.args['lambda']*bpr_feature)
         else:
             bpr = - tf.log_sigmoid(tf.reduce_sum(tf.multiply(self.embedded_user, self.embedded_item), 1) -

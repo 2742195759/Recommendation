@@ -20,11 +20,11 @@ class DataLoader():
         train_data_path = path + 'train_dict'
         self.train_data = pickle.load(open(train_data_path, 'rb'))
         test_data_path = path + 'test_dict'
-        self.test_data = pickle.load(open(test_data_path, 'rb'))
-        user_purchased_items_path = path + 'user_purchased_items_dict'
-        self.user_purchased_items = pickle.load(open(user_purchased_items_path, 'rb'))
+        self.test_data = pickle.load(open(test_data_path, 'rb')) #user@item : 'feature|option|+-1'
+        user_purchased_items_path = path + 'user_purchased_items_dict'  
+        self.user_purchased_items = pickle.load(open(user_purchased_items_path, 'rb'))# user : [items]
         A_path = path + 'A'
-        self.A = pickle.load(open(A_path, 'rb'))
+        self.A = pickle.load(open(A_path, 'rb')) # user@item : rating
         if self.args.model == 'efm':
             X_path = path + 'X'
             self.X = pickle.load(open(X_path, 'rb'))
@@ -32,7 +32,7 @@ class DataLoader():
             self.Y = pickle.load(open(Y_path, 'rb'))
 
 
-
+        # {name : id}
         user_id_path = path + 'user_id_dict'
         self.user_number = len(list(pickle.load(open(user_id_path, 'rb')).values()))
         item_id_path = path + 'item_id_dict'
@@ -51,9 +51,9 @@ class DataLoader():
             item = int(k.split('@')[1])
             if item not in self.item_candidates:
                 self.item_candidates.append(item)
-        self.item_candidates = random.sample(self.item_candidates, 200)
+        self.item_candidates = random.sample(self.item_candidates, 200) #+++
 
-        self.ground_truth = dict()
+        self.ground_truth = dict() # user : [item , .. ] item in candidates
         for k, v in self.test_data.items():
             user = int(k.split('@')[0])
             item = int(k.split('@')[1])
@@ -138,7 +138,8 @@ class DataLoader():
                         for _ in range(self.args.neg_feature_number):
                             neg_feature = np.random.randint(self.feature_number)
                             while neg_feature in f_list:
-                                neg_feature = np.random.randint(self.feature_number)
+                                neg_feature = np.random.randint(self.feature_number)  # neg_feature the first not in 
+                                                                                      # f_list [u,i]
                             self.train_users.append(int(user))
                             self.train_items.append(int(item))
                             self.train_pos_features.append(int(pos_feature))
