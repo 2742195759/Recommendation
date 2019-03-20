@@ -22,6 +22,7 @@ if __name__ == '__main__':
     for k , v in cf['path'].items() : 
         args[k] = v
     for k , v in cf['parameters'].items() : 
+        print k , v
         args[k] = v
 
     s = Solver(args)
