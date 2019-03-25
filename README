@@ -1,0 +1,16 @@
+shut_down_loss
+    true :  will not restore the loss , and output of loss will be 0.0
+            this can speedup the GPU cause it will not exchange data
+
+    default : false
+
+echo_step 
+    true : will echo the loss after each step . 
+
+    default : false
+    note : this will also restore and echo the loss after one epoch
+
+debug 
+    true : will set_trace before every Solver.run() been called
+
+    default : false

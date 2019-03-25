@@ -55,9 +55,6 @@ class Solver:
     def override_predict(self , usr) : 
         print '[WARN ] default predict routine'
         exit(-1)
-    def override_pre_predict(self) : #calculate the nessessary from tensorflow
-        print '[WARN ] default predict routine'
-        exit(-1)
 
     #must add self.train = tf.ops
     def override_build_model(self ) : 
@@ -92,39 +89,32 @@ class Solver:
         s.run(tf.global_variables_initializer())
         batch_size = int(args['batch_size'])
         num_step  = (len(train_set)+batch_size-1) // batch_size 
-        alpha = float(args['learn_rate'])
         print '[TRAIN] max_epoch = %s\t\tnum_step = %s' % (args['epoch'] , num_step)
         for epoch in range(int(args['epoch'])) : 
             np.random.shuffle(train_set)
             tot_loss = 0.0
             for step in range(num_step): 
                 end = batch_size*(step+1) if step < num_step-1 else len(train_set) + 1
-                feed_data = {self.batch_set : train_set[step*batch_size:end] , self.learn_rate : alpha}
+                feed_data = {self.batch_set : train_set[step*batch_size:end]}
                 if args.get('debug' , 'false') == 'true' : 
                     import pdb
                     pdb.set_trace()
 
-                #import pdb 
-                #pdb.set_trace()
                 # add your code here
                 s.run(self.train , feed_dict=feed_data)
-                # end your code 
-                #import pdb 
-                #pdb.set_trace()
 
                 if( self.args.get('shut_down_loss' , 'false') == 'true' ) : 
                     cnt_loss = 0
                 else : 
                     cnt_loss = s.run(self.loss , feed_dict=feed_data)
                 if( not step % 100 and self.args.get('echo_step' , 'false') == 'true') : 
-                    print '[TRAIN epoch %s , step %s] loss = %s'  % ( epoch \
-                        , step , cnt_loss)
+                    print '[TRAIN epoch %s , step %s] loss = %s\t\tlearning_rate=%s'  % ( epoch \
+                        , step , cnt_loss , s.run(self.learning_rate))
                 tot_loss += cnt_loss
             self.override_post_epoch()
-            accurate = 'WAIT'
-            if not (epoch+1) % int(args['echo_accurate_interval_epoch']) : 
-                self.override_pre_predict()
+            if (epoch-1) % int(args['echo_accurate_interval_epoch']) : 
+            self.override_post_epoch()
                 accurate = self.accurate()
+            accurate = 'WAIT'
             print '[TRAIN epoch %s] Loss = %s\t\tAccurate = %s'%(epoch , tot_loss \
                 , accurate)
-            alpha *= 0.9

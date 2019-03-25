@@ -1,6 +1,7 @@
 import argparse
 import configparser
 from solver import *
+from LFMdata_loader import LFMSolver
 
 '''
 Control the experiment schedule
@@ -22,7 +23,14 @@ if __name__ == '__main__':
     for k , v in cf['path'].items() : 
         args[k] = v
     for k , v in cf['parameters'].items() : 
-        print k , v
+        args[k] = v
+    for k , v in cf['lfm'].items() : 
+        args[k] = v
+    for k , v in cf['global'].items() : 
         args[k] = v
 
-    s = Solver(args)
+
+    if args['model'] == 'usrcf'    :
+        s = Solver(args)
+    if args['model'] == 'LFM'   :
+        s = LFMSolver(args)
